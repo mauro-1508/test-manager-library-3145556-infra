@@ -1,50 +1,58 @@
 # test-manager-library-3145556-infra
 
-> **Prueba técnica · Ficha ADSO 3145556**
-> Entrega: **martes 13 de octubre de 2026, a las 5:00 p. m.** (17:00, hora Colombia).
+Infrastructure for the Manager Library project (task T-20). One command starts:
 
-Este repositorio es la **infraestructura** de *Manager Library*: contenedores, red, volúmenes y el motor de base de datos vacío. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
+- `db`: an empty PostgreSQL 16 engine (user, database and named volume only).
+- `api`: the Laravel API (port 8000).
+- `app`: the React frontend (port 5173).
 
-## Instrucciones
+This repository contains no `CREATE TABLE` and no SQL init scripts. The schema is owned by the API migrations
+(constitution Art. V, ADR-001), so the database has no tables until the migrations are run.
 
-Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto
-con el spec planteado**.
+Spec: https://github.com/mauro-1508/test-manager-library-3145556-docs/tree/develop/spec-laravel
 
-1. Hacer fork, a su cuenta de GitHub, de cada repositorio de la tabla del final.
-2. Leer el spec en [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs).
-   Se entrega en dos versiones: `spec-python/` y `spec-.net/`.
-3. Desarrollar en los forks.
+## Prerequisites
 
-## El reto se desarrolla con React y PHP (Laravel)
+- Docker with Docker Compose v2.
+- The sibling repositories cloned side by side with this one:
 
-El spec está escrito para Python y para .NET, pero el reto **no** se hace en esos lenguajes:
+```
+<parent folder>/
+  test-manager-library-3145556-infra/   (this repository)
+  test-manager-library-3145556-api/     (Laravel, has a Dockerfile, serves on port 8000)
+  test-manager-library-3145556-app/     (React + Vite, provides its own Dockerfile, port 5173)
+```
 
-| Capa | Tecnología del reto |
-|---|---|
-| Frontend | React |
-| Backend | PHP con Laravel |
+## Start from scratch
 
-Lo que el spec define sobre el negocio —historias, criterios de aceptación, reglas, contrato de la
-API, modelo de datos— se respeta. Lo que define sobre la tecnología se traduce a React y Laravel.
+```
+cp .env.example .env
+# edit .env and replace every placeholder
+docker compose up -d --build
+```
 
-## La prueba no consiste en escribir el código
+## Verify the database starts empty
 
-El propósito principal es ver la **capacidad de desempeño con SDD** (*Spec-Driven Development*,
-desarrollo guiado por especificación): cómo se lee, se interpreta y se aplica una especificación
-para llevarla a un stack distinto. El código es el medio, no el fin.
+```
+docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "\dt library.*"
+```
 
-## Entrega
+Expected: no relations found.
 
-Cuenta lo que quede **subido a los forks antes de las 5:00 p. m.** (17:00). Lo que llegue después no se revisa.
-No hay prórroga: suban avances parciales con commits pequeños durante la prueba.
+## Run the migrations
 
-## Los seis repositorios
+```
+docker compose exec api php artisan migrate --force
+```
 
-| Repositorio | Qué va ahí |
-|---|---|
-| [`test-manager-library-3145556-docs`](https://github.com/code-sena/test-manager-library-3145556-docs) | El spec: `spec-python/` y `spec-.net/` |
-| [`test-manager-library-3145556-api`](https://github.com/code-sena/test-manager-library-3145556-api) | Backend en PHP (Laravel) |
-| [`test-manager-library-3145556-app`](https://github.com/code-sena/test-manager-library-3145556-app) | Frontend en React |
-| [`test-manager-library-3145556-page`](https://github.com/code-sena/test-manager-library-3145556-page) | Sitio público estático de presentación |
-| [`test-manager-library-3145556-infra`](https://github.com/code-sena/test-manager-library-3145556-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
-| [`test-manager-library-3145556-tool`](https://github.com/code-sena/test-manager-library-3145556-tool) | Utilidades: sembrador de datos de demostración |
+## Stop and reset
+
+```
+docker compose down       # stop, keep data
+docker compose down -v    # stop and delete the database and covers volumes
+```
+
+## Environment variables
+
+See `.env.example`. `DATABASE_URL` is composed by `docker-compose.yml` from the `POSTGRES_*` variables.
+The frontend receives `VITE_API_URL=http://localhost:8000/api/v1`.
